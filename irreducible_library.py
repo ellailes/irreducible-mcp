@@ -51,23 +51,26 @@ def rho_nu(T):
     return 6*7/8*np.pi**2*T**4/(30.)
 
 def mu_e(T):
-    if T < (0.0018):
-        # the expression diverges to 1 at lower temperatures because of issues with fsolve. I scale the chemical potential with expansion after this
-        return me + (0.5030347810001615-me)*(T/0.0018)
-    else:
-        return fsolve(lambda mu: -2*eta*RZetaThree/np.pi**2+(me*T/(2*np.pi))**(3/2)*np.exp(-me/T)*np.sinh(mu/T),1)[0]
-    
-Tlist = np.logspace(2.5,-5,num=1000)
-mu_elist = np.array([mu_e(i) for i in Tlist])
-#mu_elist = np.array([0 for i in Tlist])
-ue = interp1d(Tlist, mu_elist, fill_value='extrapolate')
+    if T <= (0.0018):
+        # the expression diverges to 1 at lower temperatures because of issues with fsolve. 
+        # I scale the chemical potential with expansion after this
+        muD = 0.0018*np.arcsinh(eta*RZetaThree/np.pi**2*0.0018**(3/2)*(2*np.pi/me)**(3/2)*np.exp(me/0.0018))
+        return me+(muD-me)*(T/0.0018)
+    if T > 10:
+        return 0
+    return T*np.arcsinh(eta*RZetaThree/np.pi**2*T**(3/2)*(2*np.pi/me)**(3/2)*np.exp(me/T))
+
+Tlist = np.logspace(2.5, -5, num=10000)
+ufull_list = np.array([mu_e(i) for i in Tlist])
+ue = interp1d(Tlist, ufull_list,fill_value='extrapolate')
+
 
 def n_e(T):
     """
     number density of electrons
     """
     integral= scipy.integrate.quad(lambda y: \
-    2/np.pi**2*(y*T)*T * np.sqrt((y*T)**2-me**2)/(np.exp(y-ue(T)/T)+1), me/T, np.inf)
+    1/np.pi**2*(y*T)*T * np.sqrt(np.abs((y*T)**2-me**2))*(1+np.tanh((ue(T)/(2*T)-y/2))), me/T, np.inf)
     return integral[0]
 
 def p_e(T):
@@ -75,7 +78,7 @@ def p_e(T):
     pressure density of electron
     """
     integral= scipy.integrate.quad(lambda y: \
-    2*T/(3*np.pi**2)*np.sqrt((y*T)**2-me**2)**3/(np.exp(y-ue(T)/T)+1), me/T, np.inf)
+    T/(3*np.pi**2)*np.sqrt(np.abs((y*T)**2-me**2))**3*(1+np.tanh((ue(T)/(2*T)-y/2))), me/T, np.inf)
     return integral[0]
 
 def rho_e(T):
@@ -84,7 +87,7 @@ def rho_e(T):
     """
 
     integral= scipy.integrate.quad(lambda y: \
-    2*T/np.pi**2*(y*T)**2 * np.sqrt((y*T)**2-me**2)/(np.exp(y-ue(T)/T)+1), me/T, np.inf)
+    T/np.pi**2*(y*T)**2 * np.sqrt(np.abs((y*T)**2-me**2))*(1+np.tanh((ue(T)/(2*T)-y/2))), me/T, np.inf)
     return integral[0]
     
 
@@ -134,7 +137,7 @@ def wp_full(T): #flag to make draft more clear about factor of 2
     """
     integral = integrate.quad(lambda p: 8*alpha_em/np.pi\
                 *p**2/np.sqrt(p**2+me**2)*(1 - p**2/(3*(p**2+me**2)))\
-                *1/(1+np.exp((np.sqrt(p**2+me**2)-ue(T))/T))
+                /2*(1+np.tanh((ue(T)-np.sqrt(p**2+me**2))/(2*T)))
                             , 0, np.inf)
     return np.sqrt(integral[0])
     
@@ -162,8 +165,7 @@ def w1_full(T):
     integral = integrate.quad(lambda p: 8*alpha_em/np.pi\
                 *p**2/np.sqrt(p**2+me**2)*\
                 (5*p**2/(3*(p**2+me**2))-p**4/((p**2+me**2)**2))\
-                *1/(1+np.exp((np.sqrt(p**2+me**2)-ue(T))/T))
-                            , 0, np.inf)
+                /2*(1+np.tanh((ue(T)-np.sqrt(p**2+me**2))/(2*T)))            , 0, np.inf)
     return np.sqrt(integral[0])
 
 
@@ -505,12 +507,12 @@ def relic_ann(Q, mx, whole_shebang=False, muon=True, noQ = False):
         #print("This function is returning (nDM(modified no Q) final, a_max)")
         return np.array([np.exp(gulu[-1][-1]),alist[-1]])
     else:
-        if mx < 0.001:
+        if Q<10e-14:
             gulu = scipy.integrate.odeint(lambda logn, a: \
-                - 3/a +2/(np.exp(logn)*a*H(a))*gamma(T(a)), [np.log(6e-05)], alist)
+                - 3/a +2/(np.exp(logn)*a*H(a))*gamma(T(a)), [-50], alist)
         else:
             gulu = scipy.integrate.odeint(lambda logn, a: \
-                - 3/a +2/(np.exp(logn)*a*H(a))*gamma(T(a)), [np.log(6e-05)], alist)
+                - 3/a +2/(np.exp(logn)*a*H(a))*gamma(T(a)), [-20], alist)
         if whole_shebang:
             print(np.exp(gulu[-1])/nxrelic(mx, T(100))*alist[-1]**3/100**3)
             return np.exp(gulu).flatten()
@@ -540,12 +542,12 @@ def relic(Q, mx,whole_shebang=False, muon=True, noQ = False):
         #print("This function is returning (nDM(modified no Q) final, a_max)")
         return np.array([np.exp(gulu[-1][-1]),alist[-1]])
     else:
-        if mx < 0.001:
+        if Q < 10e-14:
             gulu = scipy.integrate.odeint(lambda logn, a: \
-                - 3/a +2/(np.exp(logn)*a*H(a))*gamma(T(a)), [np.log(0.004653)], alist)
+                - 3/a +2/(np.exp(logn)*a*H(a))*gamma(T(a)), [-40], alist)
         else:
             gulu = scipy.integrate.odeint(lambda logn, a: \
-                - 3/a +2/(np.exp(logn)*a*H(a))*gamma(T(a)), [np.log(0.004653)], alist)
+                - 3/a +2/(np.exp(logn)*a*H(a))*gamma(T(a)), [-20], alist)
         if whole_shebang:
             print(np.exp(gulu[-1])/nxrelic(mx, T(100))*alist[-1]**3/100**3)
             return np.exp(gulu).flatten()
@@ -572,12 +574,12 @@ def relic_plas(Q, mx, whole_shebang=False, noQ = False):
         #print("This function is returning (nDM(modified no Q) final, a_max)")
         return np.array([np.exp(gulu[-1][-1]),alist[-1]])
     else:
-        if mx < 0.001:
+        if Q<10e-14:
             gulu = scipy.integrate.odeint(lambda logn, a: \
-                - 3/a +2/(np.exp(logn)*a*H(a))*gamma(T(a)), [np.log(0.004591)], alist)
+                - 3/a +2/(np.exp(logn)*a*H(a))*gamma(T(a)), [-40], alist)
         else:
             gulu = scipy.integrate.odeint(lambda logn, a: \
-                - 3/a +2/(np.exp(logn)*a*H(a))*gamma(T(a)), [np.log(0.004591)], alist)
+                - 3/a +2/(np.exp(logn)*a*H(a))*gamma(T(a)), [-20], alist)
         if whole_shebang:
             print(np.exp(gulu[-1])/nxrelic(mx, T(100))*alist[-1]**3/100**3)
             return np.exp(gulu).flatten()
