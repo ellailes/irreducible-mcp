@@ -352,7 +352,6 @@ def gamma_ann(Q, mx, T,noQ = False,muon=True):
                 *(s**2 +1/3*(s-4*mmu**2)*(s-4*mx**2)+4*s*(mx**2+mmu**2))\
                 *1/(8*np.pi)*np.sqrt(1-4*mmu**2/s)*np.sqrt(s)\
                 *scipy.special.kn(1, np.sqrt(s)/T) *T/(2*np.pi)**3
-                
                 return integrate.quad(integrand, max(4*me**2, 4*mx**2), np.inf)[0]\
                 +integrate.quad(integrandmu, 4*mmu**2, np.inf)[0]
             else:
@@ -372,7 +371,6 @@ def gamma_ann(Q, mx, T,noQ = False,muon=True):
                     
                     kudu[i] = integrate.quad(integrand, max(4*me**2, 4*mx**2), np.inf)[0]+\
                     +integrate.quad(integrandmu, 4*mmu**2, np.inf)[0]
-                
                 return kudu
         
 
