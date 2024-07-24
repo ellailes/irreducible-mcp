@@ -552,6 +552,7 @@ def relic(Q, mx,whole_shebang=False, muon=True, noQ = False):
         else:
             return np.exp(np.squeeze(gulu[-1]))/nxrelic(mx, T(100))*alist[-1]**3/100**3
     
+    
 
 def relic_plas(Q, mx, whole_shebang=False, noQ = False):
     
